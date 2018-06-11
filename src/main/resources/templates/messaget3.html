@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<link href="/webjars/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+<script src="/webjars/jquery/3.1.0/jquery.min.js"></script>
+<script src="/webjars/sockjs-client/1.0.2/sockjs.min.js"></script>
+<script src="/webjars/stomp-websocket/2.3.3/stomp.min.js"></script>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<body>
+<!--<blockquote class="layui-elem-quote">/lkl/topic-message3</blockquote>-->
+<!--<font  face="黑体" color="black">当前用户：<p th:text="${username}"></p></font>-->
+
+<!--<font  face="黑体" color="black">当前用户：<p th:text="${username}"></p></font>-->
+<div id="main-content" class="container">
+    <label >当前用户：<p th:text="${username}"></label>
+    <div class="row">
+        <div class="col-md-6">
+            <form class="form-inline">
+                <div class="form-group">
+                    <label for="connect">WebSocket connection:</label>
+                    <!--<label style="display:inline-block;width: 15%">your name?</label><input type="text" id="userName" /> <br>-->
+                    <button id="connect" class="btn btn-default" type="submit">Connect</button>
+                    <button id="disconnect" class="btn btn-default" type="submit" disabled="disabled">Disconnect</button>
+                </div>
+            </form>
+        </div>
+        <div class="col-md-6">
+            <form class="form-inline">
+                <div class="form-group">
+                    <label for="topic">What is your topic?</label>
+                    <input type="text" id="topic" class="form-control" placeholder="Your topic here...">
+                </div>
+                <button id="send" class="btn btn-default" type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <table id="conversation" class="table table-striped">
+                <thead>
+                <tr>
+                    <th>Greetings</th>
+                </tr>
+                </thead>
+                <tbody id="greetings">
+                </tbody>
+            </table>
+        </div>
+    </div>
+    </form>
+</div>
+
+<script th:inline="javascript">
+    var stompClient = null;
+    //传递用户key值
+    var login = [[${username}]];
+    function setConnected(connected){
+        $("#connect").prop("disabled", connected);
+        $("#disconnect").prop("disabled", !connected);
+        if (connected) {
+            $("#conversation").show();
+        }
+        else {
+            $("#conversation").hide();
+        }
+        $("#greetings").html("");
+    }
+
+    function connect() {
+        var socket = new SockJS('/ricky-websocket');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({login:login}, function (frame) {
+            setConnected(true);
+            console.log('Connected: ' + frame);
+            //回调函数，将服务端的数据显示在页面上
+            stompClient.subscribe('/ricky/topic/greetings', function (greeting) {
+                showGreeting(JSON.parse(greeting.body).content);
+            });
+        });
+    }
+
+    function disconnect() {
+        if (stompClient != null) {
+            stompClient.disconnect();
+        }
+        setConnected(false);
+        console.log("Disconnected");
+    }
+
+    function sendName() {
+        stompClient.send("/app/msg/single", {}, JSON.stringify({'topic': $("#topic").val(),'id':login}));
+    }
+
+    function showGreeting(message) {
+        $("#greetings").append("<tr><td>" + message + "</td></tr>");
+    }
+
+    $(function () {
+        $("form").on('submit', function (e) {
+            e.preventDefault();
+        });
+        $( "#connect" ).click(function() {
+            connect();
+        });
+        $( "#disconnect" ).click(function() { disconnect(); });
+        $( "#send" ).click(function() { sendName(); });
+    });
+</script>
+</body>
+</html>
